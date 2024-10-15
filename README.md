@@ -16,11 +16,11 @@ Options:
 
 
 | Option       | Description                                  | Done? |
-|--------------|----------------------------------------------|------|
-| `-i`         | Case-insensitive search                      | [ ]  |
-| `-n`         | Print line numbers                           | [ ]  |
-| `-v`         | Invert match (exclude lines that match)      | [ ]  |
-| `-r`         | Recursive directory search                   | [ ]  |
-| `-f`         | Print filenames                              | [ ]  |
-| `-c`         | Enable colored output                        | [ ]  |
-| `-h`, `--help` | Show help information                       | ✅    |
+|--------------|----------------------------------------------|-------|
+| `-i`         | Case-insensitive search                      | [ ]   |
+| `-n`         | Print line numbers                           | [ ]   |
+| `-v`         | Invert match (exclude lines that match)      | [ ]   |
+| `-r`         | Recursive directory search                   | [ ]   |
+| `-f`         | Print filenames                              | [ ]   |
+| `-c`         | Enable colored output                        | [ ]   |
+| `-h`, `--help` | Show help information                       | ✅     |
