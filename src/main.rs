@@ -1,11 +1,10 @@
 use std::env;
 use std::path::Path;
 use glob::glob;
-use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::fs::{read_dir, File};
+use std::io::{self, BufRead, BufReader, Write};
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
-use std::io::Write;
-
+use walkdir::WalkDir;
 
 #[derive(Debug)]
 struct GrepOption {
@@ -80,7 +79,7 @@ fn debug_print_info(options: &Vec<String>, pattern: &Option<String>, files: &Vec
 
 fn push_files(arg: &str, files: &mut Vec<String>){
     if arg.contains('*') {
-        // wildcard pattern
+        // wildcard pattern ==> path/*.extension
         match glob(arg) {
             Ok(paths) => {
                 for entry in paths {
@@ -168,6 +167,43 @@ fn process_file(file_name: &String, pattern: &Option<String>, grep_option: &Grep
     Ok(())
 }
 
+// Checks if the file is readable by trying to open it.
+fn is_file_readable(path: &Path) -> bool {
+    File::open(path).is_ok()
+}
+
+// Recursively collects all readable files in the given directory and its subdirectories.
+fn recursive_file_collection(path: &str, files: &mut Vec<String>) {
+    for entry in WalkDir::new(path) {
+        match entry {
+            Ok(entry) => {
+                let path = entry.path();
+                if path.is_file() && is_file_readable(path) {
+                    if let Some(path_str) = path.to_str() {
+                        files.push(path_str.to_string());
+                    }
+                }
+            },
+            Err(_) => {},
+        }
+    }
+}
+
+// Collects all readable files in the current directory (non-recursive).
+fn current_directory_collection(path: &str, files: &mut Vec<String>) {
+    if let Ok(entries) = read_dir(path) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.is_file() && is_file_readable(&path) {
+                    if let Some(path_str) = path.to_str() {
+                        files.push(path_str.to_string());
+                    }
+                }
+            }
+        }
+    }
+}
 
 fn main() {
     // collect arguments, skip the program name
@@ -204,13 +240,26 @@ fn main() {
         return;
     }
 
+
+    // push files in paths
+    if grep_options.recursive_search {
+        // recursively search all the subdirectory with all the files
+        for path in paths {
+            recursive_file_collection(&path, &mut files);
+        }
+    } else {
+        // only search  all the files in the current path directory
+        for path in paths {
+            current_directory_collection(&path, &mut files);
+        }
+    }
+
+
     // search in file
     for file in files {
         if let Err(e) = process_file(&file, &pattern, &grep_options) {
             eprintln!("Error processing file {}: {}", file, e);
         }
     }
-    // search in paths
-
 
 }
