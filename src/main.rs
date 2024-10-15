@@ -1,6 +1,11 @@
 use std::env;
 use std::path::Path;
 use glob::glob;
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use std::io::Write;
+
 
 #[derive(Debug)]
 struct GrepOption {
@@ -61,7 +66,7 @@ fn is_file_or_wildcard(arg: &str) -> bool {
 }
 
 #[allow(dead_code)]
-fn debug_print_info(options: &Vec<String>, pattern: Option<String>, files: &Vec<String>, paths: &Vec<String>) {
+fn debug_print_info(options: &Vec<String>, pattern: &Option<String>, files: &Vec<String>, paths: &Vec<String>) {
     // Display categorized components
     println!("Options: {:?}", options);
     if let Some(p) = pattern {
@@ -95,6 +100,75 @@ fn push_files(arg: &str, files: &mut Vec<String>){
         files.push(arg.to_string());
     }
 }
+
+fn process_file(file_name: &String, pattern: &Option<String>, grep_option: &GrepOption) -> io::Result<()> {
+    let file = File::open(file_name)?;
+    let reader = BufReader::new(file);
+
+    // For colored output
+    let mut stdout = StandardStream::stdout(ColorChoice::Always);
+
+    if let Some(ref pattern) = pattern {
+        for (line_number, line) in reader.lines().enumerate() {
+            let line = line?;
+            let mut match_found = if grep_option.case_insensitive {
+                line.to_lowercase().contains(&pattern.to_lowercase())
+            } else {
+                line.contains(pattern)
+            };
+
+            if grep_option.invert_match {
+                match_found = !match_found;
+            }
+
+            if match_found {
+                // print filename if flag is true
+                if grep_option.print_filename {
+                    print!("{}: ", file_name);
+                }
+
+                // print line number if flag is true
+                if grep_option.print_line_numbers {
+                    print!("{}: ", line_number + 1);
+                }
+
+                // print the line with color if flag is true AND grep_options.invert_match is false
+                if grep_option.colored_output && !grep_option.invert_match {
+                    // Find all positions of the matching pattern
+                    let mut start = 0;
+                    // Match with case-insensitivity or case-sensitivity
+                    while let Some(match_index) = if grep_option.case_insensitive {
+                        line[start..].to_lowercase().find(&pattern.to_lowercase())
+                    } else {
+                        line[start..].find(pattern)
+                    } {
+                        // Print the part before the match
+                        print!("{}", &line[start..start + match_index]);
+
+                        // Set the color for the matched word and print it
+                        stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+                        write!(&mut stdout, "{}", &line[start + match_index..start + match_index + pattern.len()])?;
+                        stdout.reset()?;
+
+                        // Update start index to continue searching
+                        start += match_index + pattern.len();
+                    }
+
+                    // Print the rest of the line after the last match
+                    println!("{}", &line[start..]);
+                } else {
+                    println!("{}", line);
+                }
+            }
+        }
+    } else {
+        eprintln!("Error: No pattern provided.");
+    }
+
+    Ok(())
+}
+
+
 fn main() {
     // collect arguments, skip the program name
     let args: Vec<String> = env::args().skip(1).collect();
@@ -120,10 +194,8 @@ fn main() {
         }
     }
 
-    debug_print_info(&options, pattern, &files, &paths);
-
-
     // // Debugging info
+    // debug_print_info(&options, &pattern, &files, &paths);
     // println!("{:?}", grep_options);
 
     // check help options
@@ -132,7 +204,13 @@ fn main() {
         return;
     }
 
-    // search
-    
+    // search in file
+    for file in files {
+        if let Err(e) = process_file(&file, &pattern, &grep_options) {
+            eprintln!("Error processing file {}: {}", file, e);
+        }
+    }
+    // search in paths
+
 
 }
