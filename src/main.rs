@@ -1,4 +1,5 @@
 use std::env;
+use std::path::Path;
 
 #[derive(Debug)]
 struct GrepOption {
@@ -52,6 +53,28 @@ fn print_help_info() {
     println!("-h, --help        Show help information");
 }
 
+fn is_file(arg: &str) -> bool {
+    let path = Path::new(arg);
+    if let Some(ext) = path.extension() {
+        !ext.is_empty() // Check if it has an extension
+    } else {
+        false
+    }
+}
+
+#[allow(dead_code)]
+fn debug_print_info(options: &Vec<String>, pattern: Option<String>, files: &Vec<String>, paths: &Vec<String>) {
+    // Display categorized components
+    println!("Options: {:?}", options);
+    if let Some(p) = pattern {
+        println!("Pattern: {}", p);
+    } else {
+        println!("No pattern provided.");
+    }
+    println!("Files: {:?}", files);
+    println!("Paths: {:?}", paths);
+}
+
 
 fn main() {
     // collect arguments, skip the program name
@@ -61,6 +84,7 @@ fn main() {
     let mut options = Vec::new();
     let mut pattern: Option<String> = None;
     let mut files: Vec<String> = Vec::new();
+    let mut paths: Vec<String> = Vec::new();
 
     for arg in args {
         if arg.starts_with("-") {
@@ -69,18 +93,15 @@ fn main() {
         } else if pattern.is_none() {
             pattern = Some(arg.to_string());
         } else {
-            files.push(arg.to_string());
+            if is_file(&arg){
+                files.push(arg.to_string());
+            } else {
+                paths.push(arg.to_string());
+            }
         }
     }
 
-    // Display categorized components
-    println!("Options: {:?}", options);
-    if let Some(p) = pattern {
-        println!("Pattern: {}", p);
-    } else {
-        println!("No pattern provided.");
-    }
-    println!("Files: {:?}", files);
+    // debug_print_info(&options, pattern, &files, &paths);
 
 
     // // Debugging info
@@ -91,4 +112,6 @@ fn main() {
         print_help_info();
         return;
     }
+
+
 }
